@@ -3,37 +3,43 @@ description: 'Evaluations for LLM applications'
 author: 'HoneyHive'
 
 branding:
-  icon: "check-square"
-  color: "yellow"
+  icon: 'check-square'
+  color: 'yellow'
 
 inputs:
   runId:
-    description: "The ID of the run to evaluate"
+    description: 'The ID of the run to evaluate'
     required: true
   projectId:
-    description: "The project ID associated with the evaluation"
+    description: 'The project ID associated with the evaluation'
     required: true
   aggregateFunction:
-    description: "The function used for aggregating the evaluation results (e.g., average, min, max, etc.)"
+    description:
+      'The function used for aggregating the evaluation results (e.g., average,
+      min, max, etc.)'
     required: false
-    default: "average"
+    default: 'average'
   apiUrl:
-    description: "The base URL of the Honeyhive API"
+    description: 'The base URL of the Honeyhive API'
     required: true
 
 outputs:
   status:
-    description: "The status of the evaluation run (e.g., pending or completed)"
+    description: 'The status of the evaluation run (e.g., pending or completed)'
   success:
-    description: "Whether all datapoints have passed (true or false)"
+    description: 'Whether all datapoints have passed (true or false)'
   passed:
-    description: "List of passed datapoint_ids or session_ids"
+    description: 'List of passed datapoint_ids or session_ids'
   failed:
-    description: "List of failed datapoint_ids or session_ids"
+    description: 'List of failed datapoint_ids or session_ids'
   metrics:
-    description: "Metric level aggregates and details of passed/failed status for each metric"
+    description:
+      'Metric level aggregates and details of passed/failed status for each
+      metric'
   datapoints:
-    description: "Details of each datapoint with associated session_id, pass status, and metric-level pass/fail status"
+    description:
+      'Details of each datapoint with associated session_id, pass status, and
+      metric-level pass/fail status'
 
 runs:
   using: node20
