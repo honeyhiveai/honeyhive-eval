@@ -1,6 +1,5 @@
 import * as core from '@actions/core'
 import * as httpClient from '@actions/http-client'
-import { wait } from './wait'
 
 /**
  * The main function for the action.
