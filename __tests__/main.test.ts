@@ -1,89 +1,152 @@
 /**
  * Unit tests for the action's main functionality, src/main.ts
- *
- * These should be run as if the action was called from a workflow.
- * Specifically, the inputs listed in `action.yml` should be set as environment
- * variables following the pattern `INPUT_<INPUT_NAME>`.
  */
 
 import * as core from '@actions/core'
-import * as main from '../src/main'
+import { run } from '../src/main'
 
-// Mock the action's main function
-const runMock = jest.spyOn(main, 'run')
+// Mocking the @actions/core module
+jest.mock('@actions/core')
 
-// Other utilities
-const timeRegex = /^\d{2}:\d{2}:\d{2}/
+const mockGet = jest.fn()
 
-// Mock the GitHub Actions core library
-let debugMock: jest.SpiedFunction<typeof core.debug>
-let errorMock: jest.SpiedFunction<typeof core.error>
-let getInputMock: jest.SpiedFunction<typeof core.getInput>
-let setFailedMock: jest.SpiedFunction<typeof core.setFailed>
-let setOutputMock: jest.SpiedFunction<typeof core.setOutput>
+jest.mock('@actions/http-client', () => {
+  return {
+    HttpClient: jest.fn().mockImplementation(() => {
+      return { get: mockGet }
+    })
+  }
+})
 
-describe('action', () => {
+describe('GitHub Actions Script', () => {
+  let getInputMock: jest.Mock
+  let setOutputMock: jest.Mock
+  let setFailedMock: jest.Mock
+
+  const mockApiResponse = {
+    status: 'completed',
+    success: true,
+    passed: ['datapoint1', 'datapoint2'],
+    failed: [],
+    metrics: {
+      aggregation_function: 'average',
+      details: []
+    },
+    datapoints: []
+  }
+
   beforeEach(() => {
+    // Reset mocks before each test
     jest.clearAllMocks()
 
-    debugMock = jest.spyOn(core, 'debug').mockImplementation()
-    errorMock = jest.spyOn(core, 'error').mockImplementation()
-    getInputMock = jest.spyOn(core, 'getInput').mockImplementation()
-    setFailedMock = jest.spyOn(core, 'setFailed').mockImplementation()
-    setOutputMock = jest.spyOn(core, 'setOutput').mockImplementation()
-  })
-
-  it('sets the time output', async () => {
-    // Set the action's inputs as return values from core.getInput()
-    getInputMock.mockImplementation(name => {
+    // Mock core.getInput to return test values
+    getInputMock = core.getInput as jest.Mock
+    getInputMock.mockImplementation((name: string) => {
       switch (name) {
-        case 'milliseconds':
-          return '500'
+        case 'runId':
+          return 'mockRunId'
+        case 'projectId':
+          return 'mockProjectId'
+        case 'aggregateFunction':
+          return 'average'
+        case 'apiUrl':
+          return 'https://api.example.com'
         default:
           return ''
       }
     })
 
-    await main.run()
-    expect(runMock).toHaveReturned()
+    // Mock core.setOutput and core.setFailed
+    setOutputMock = core.setOutput as jest.Mock
+    setFailedMock = core.setFailed as jest.Mock
 
-    // Verify that all of the core library functions were called correctly
-    expect(debugMock).toHaveBeenNthCalledWith(1, 'Waiting 500 milliseconds ...')
-    expect(debugMock).toHaveBeenNthCalledWith(
-      2,
-      expect.stringMatching(timeRegex)
-    )
-    expect(debugMock).toHaveBeenNthCalledWith(
-      3,
-      expect.stringMatching(timeRegex)
-    )
-    expect(setOutputMock).toHaveBeenNthCalledWith(
-      1,
-      'time',
-      expect.stringMatching(timeRegex)
-    )
-    expect(errorMock).not.toHaveBeenCalled()
-  })
-
-  it('sets a failed status', async () => {
-    // Set the action's inputs as return values from core.getInput()
-    getInputMock.mockImplementation(name => {
-      switch (name) {
-        case 'milliseconds':
-          return 'this is not a number'
-        default:
-          return ''
-      }
+    // Mock the HttpClient's get method
+    mockGet.mockResolvedValue({
+      message: { statusCode: 200 },
+      readBody: jest.fn().mockResolvedValue(JSON.stringify(mockApiResponse))
     })
 
-    await main.run()
-    expect(runMock).toHaveReturned()
+    // Set up process.env for API key
+    process.env.HH_API_KEY = 'mockApiKey'
+  })
 
-    // Verify that all of the core library functions were called correctly
-    expect(setFailedMock).toHaveBeenNthCalledWith(
-      1,
-      'milliseconds not a number'
+  it('should set outputs correctly on a successful API call', async () => {
+    await run()
+
+    // Ensure core.getInput was called with expected arguments
+    expect(getInputMock).toHaveBeenCalledWith('runId', { required: true })
+    expect(getInputMock).toHaveBeenCalledWith('projectId', { required: true })
+    expect(getInputMock).toHaveBeenCalledWith('aggregateFunction')
+    expect(getInputMock).toHaveBeenCalledWith('apiUrl')
+
+    // Ensure the HTTP request was made with the correct URL and headers
+    expect(mockGet).toHaveBeenCalledWith(
+      'https://api.example.com/eval/mockRunId/result?projectId=mockProjectId&aggregateFunction=average',
+      {
+        Authorization: 'Bearer mockApiKey',
+        'Content-Type': 'application/json'
+      }
     )
-    expect(errorMock).not.toHaveBeenCalled()
+
+    // Ensure core.setOutput was called with the correct values from the mock response
+    expect(setOutputMock).toHaveBeenCalledWith('status', 'completed')
+    expect(setOutputMock).toHaveBeenCalledWith('success', true)
+    expect(setOutputMock).toHaveBeenCalledWith('passed', [
+      'datapoint1',
+      'datapoint2'
+    ])
+    expect(setOutputMock).toHaveBeenCalledWith('failed', [])
+    expect(setOutputMock).toHaveBeenCalledWith(
+      'metrics',
+      mockApiResponse.metrics
+    )
+    expect(setOutputMock).toHaveBeenCalledWith(
+      'datapoints',
+      mockApiResponse.datapoints
+    )
+  })
+
+  it('should fail the workflow if the API key is missing', async () => {
+    delete process.env.HH_API_KEY // Simulate missing API key
+
+    await run()
+
+    // Ensure core.setFailed was called with the appropriate error message
+    expect(setFailedMock).toHaveBeenCalledWith(
+      'API key is missing. Make sure HH_API_KEY is set in the environment.'
+    )
+  })
+
+  it('should fail the workflow if the API request returns a non-200 status', async () => {
+    // Mock the HTTP client to return a non-200 status
+    mockGet.mockResolvedValue({
+      message: { statusCode: 500 },
+      readBody: jest
+        .fn()
+        .mockResolvedValue(JSON.stringify({ error: 'Server error' }))
+    })
+
+    await run()
+
+    // Ensure core.setFailed was called with the appropriate error message
+    expect(setFailedMock).toHaveBeenCalledWith(
+      'API request failed with status code 500'
+    )
+  })
+
+  it('should handle and report an error from the API response', async () => {
+    // Mock the HTTP client to return invalid JSON
+    mockGet.mockResolvedValue({
+      message: { statusCode: 200 },
+      readBody: jest.fn().mockResolvedValue('Invalid JSON')
+    })
+
+    await run()
+
+    // Ensure core.setFailed was called due to JSON parsing error
+    expect(setFailedMock).toHaveBeenCalled()
+    expect(setFailedMock).toHaveBeenCalledWith(
+      expect.stringContaining('Unexpected token')
+    )
   })
 })

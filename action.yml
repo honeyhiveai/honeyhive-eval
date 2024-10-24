@@ -1,23 +1,45 @@
-name: 'The name of your action here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'HoneyHive Evaluation'
+description: 'Evaluations for LLM applications'
+author: 'HoneyHive'
 
-# Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
-  icon: 'heart'
-  color: 'red'
+  icon: 'check-square'
+  color: 'yellow'
 
-# Define your inputs here.
 inputs:
-  milliseconds:
-    description: 'Your input description here'
+  runId:
+    description: 'The ID of the run to evaluate'
     required: true
-    default: '1000'
+  projectId:
+    description: 'The project ID associated with the evaluation'
+    required: true
+  aggregateFunction:
+    description:
+      'The function used for aggregating the evaluation results (e.g., average,
+      min, max, etc.)'
+    required: false
+    default: 'average'
+  apiUrl:
+    description: 'The base URL of the Honeyhive API'
+    required: true
 
-# Define your outputs here.
 outputs:
-  time:
-    description: 'Your output description here'
+  status:
+    description: 'The status of the evaluation run (e.g., pending or completed)'
+  success:
+    description: 'Whether all datapoints have passed (true or false)'
+  passed:
+    description: 'List of passed datapoint_ids or session_ids'
+  failed:
+    description: 'List of failed datapoint_ids or session_ids'
+  metrics:
+    description:
+      'Metric level aggregates and details of passed/failed status for each
+      metric'
+  datapoints:
+    description:
+      'Details of each datapoint with associated session_id, pass status, and
+      metric-level pass/fail status'
 
 runs:
   using: node20

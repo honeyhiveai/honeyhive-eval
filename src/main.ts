@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import { wait } from './wait'
+import * as httpClient from '@actions/http-client'
 
 /**
  * The main function for the action.
@@ -7,18 +7,69 @@ import { wait } from './wait'
  */
 export async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
+    const runId: string = core.getInput('runId', { required: true })
+    const projectId: string = core.getInput('projectId', { required: true })
+    const aggregateFunction: string =
+      core.getInput('aggregateFunction') || 'average'
+    const apiUrl: string = core.getInput('apiUrl') || 'https://api.honeyhive.ai'
+    const apiKey = process.env.HH_API_KEY
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+    if (!apiKey) {
+      throw new Error(
+        'API key is missing. Make sure HH_API_KEY is set in the environment.'
+      )
+    }
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    // Construct the API URL for the request
+    const url = `${apiUrl}/eval/${runId}/result`
 
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
+    // Create an instance of the HTTP client
+    const client = new httpClient.HttpClient()
+
+    // Set up request headers, including the Bearer token
+    const headers = {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    }
+
+    // Payload with query parameters
+    const queryParams = {
+      projectId,
+      aggregateFunction
+    }
+
+    // Convert queryParams to a URL query string
+    const queryString = new URLSearchParams(queryParams).toString()
+
+    // Make the GET request to the API
+    const response = await client.get(`${url}?${queryString}`, headers)
+
+    // Check if the response is OK
+    if (response.message.statusCode !== 200) {
+      const errorMessage = `API request failed with status code ${response.message.statusCode}`
+      core.setFailed(errorMessage)
+      return
+    }
+
+    // Parse the API response
+    const responseBody = await response.readBody()
+    const result = JSON.parse(responseBody)
+
+    // Set individual outputs from the API response
+    core.setOutput('status', result.status)
+    core.setOutput('success', result.success)
+    core.setOutput('passed', result.passed)
+    core.setOutput('failed', result.failed)
+    core.setOutput('metrics', result.metrics)
+    core.setOutput('datapoints', result.datapoints)
+
+    // Log for debugging purposes
+    core.info(`Status: ${result.status}`)
+    core.info(`Success: ${result.success}`)
+    core.info(`Passed: ${JSON.stringify(result.passed, null, 2)}`)
+    core.info(`Failed: ${JSON.stringify(result.failed, null, 2)}`)
+    core.info(`Metrics: ${JSON.stringify(result.metrics, null, 2)}`)
+    core.info(`Datapoints: ${JSON.stringify(result.datapoints, null, 2)}`)
   } catch (error) {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message)
