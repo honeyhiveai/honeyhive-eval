@@ -22,6 +22,9 @@ inputs:
   apiUrl:
     description: 'The base URL of the Honeyhive API'
     required: true
+  apiKey:
+    description: 'The API key for the Honeyhive API'
+    required: true
 
 outputs:
   status:

@@ -51,6 +51,8 @@ describe('GitHub Actions Script', () => {
           return 'average'
         case 'apiUrl':
           return 'https://api.example.com'
+        case 'apiKey':
+          return 'mockApiKey'
         default:
           return ''
       }
@@ -65,9 +67,6 @@ describe('GitHub Actions Script', () => {
       message: { statusCode: 200 },
       readBody: jest.fn().mockResolvedValue(JSON.stringify(mockApiResponse))
     })
-
-    // Set up process.env for API key
-    process.env.HH_API_KEY = 'mockApiKey'
   })
 
   it('should set outputs correctly on a successful API call', async () => {
@@ -76,6 +75,7 @@ describe('GitHub Actions Script', () => {
     // Ensure core.getInput was called with expected arguments
     expect(getInputMock).toHaveBeenCalledWith('runId', { required: true })
     expect(getInputMock).toHaveBeenCalledWith('projectId', { required: true })
+    expect(getInputMock).toHaveBeenCalledWith('apiKey', { required: true })
     expect(getInputMock).toHaveBeenCalledWith('aggregateFunction')
     expect(getInputMock).toHaveBeenCalledWith('apiUrl')
 
@@ -103,17 +103,6 @@ describe('GitHub Actions Script', () => {
     expect(setOutputMock).toHaveBeenCalledWith(
       'datapoints',
       mockApiResponse.datapoints
-    )
-  })
-
-  it('should fail the workflow if the API key is missing', async () => {
-    delete process.env.HH_API_KEY // Simulate missing API key
-
-    await run()
-
-    // Ensure core.setFailed was called with the appropriate error message
-    expect(setFailedMock).toHaveBeenCalledWith(
-      'API key is missing. Make sure HH_API_KEY is set in the environment.'
     )
   })
 

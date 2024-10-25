@@ -12,13 +12,7 @@ export async function run(): Promise<void> {
     const aggregateFunction: string =
       core.getInput('aggregateFunction') || 'average'
     const apiUrl: string = core.getInput('apiUrl') || 'https://api.honeyhive.ai'
-    const apiKey = process.env.HH_API_KEY
-
-    if (!apiKey) {
-      throw new Error(
-        'API key is missing. Make sure HH_API_KEY is set in the environment.'
-      )
-    }
+    const apiKey = core.getInput('apiKey', { required: true })
 
     // Construct the API URL for the request
     const url = `${apiUrl}/eval/${runId}/result`
