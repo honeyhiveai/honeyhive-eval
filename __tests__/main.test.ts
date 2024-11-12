@@ -81,7 +81,7 @@ describe('GitHub Actions Script', () => {
 
     // Ensure the HTTP request was made with the correct URL and headers
     expect(mockGet).toHaveBeenCalledWith(
-      'https://api.example.com/eval/mockRunId/result?projectId=mockProjectId&aggregateFunction=average',
+      'https://api.example.com/runs/mockRunId/result?projectId=mockProjectId&aggregateFunction=average',
       {
         Authorization: 'Bearer mockApiKey',
         'Content-Type': 'application/json'
