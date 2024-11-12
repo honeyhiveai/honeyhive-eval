@@ -24973,7 +24973,7 @@ async function run() {
         const apiUrl = core.getInput('apiUrl') || 'https://api.honeyhive.ai';
         const apiKey = core.getInput('apiKey', { required: true });
         // Construct the API URL for the request
-        const url = `${apiUrl}/eval/${runId}/result`;
+        const url = `${apiUrl}/runs/${runId}/result`;
         // Create an instance of the HTTP client
         const client = new httpClient.HttpClient();
         // Set up request headers, including the Bearer token

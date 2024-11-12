@@ -15,7 +15,7 @@ export async function run(): Promise<void> {
     const apiKey = core.getInput('apiKey', { required: true })
 
     // Construct the API URL for the request
-    const url = `${apiUrl}/eval/${runId}/result`
+    const url = `${apiUrl}/runs/${runId}/result`
 
     // Create an instance of the HTTP client
     const client = new httpClient.HttpClient()
