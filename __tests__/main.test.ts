@@ -78,8 +78,14 @@ describe('GitHub Actions Script', () => {
       switch (name) {
         case 'runId':
           return 'mockRunId'
-        case 'projectId':
-          return 'mockProjectId'
+        case 'project':
+          return 'mockProject'
+        case 'openaiApiKey':
+          return 'mockOpenaiApiKey'
+        case 'runtime':
+          return 'python'
+        case 'root':
+          return '.'
         case 'aggregateFunction':
           return 'average'
         case 'apiUrl':
@@ -105,16 +111,32 @@ describe('GitHub Actions Script', () => {
   it('should set outputs correctly on a successful API call', async () => {
     await run()
 
-    // Ensure core.getInput was called with expected arguments
-    expect(getInputMock).toHaveBeenCalledWith('runId', { required: true })
-    expect(getInputMock).toHaveBeenCalledWith('projectId', { required: true })
-    expect(getInputMock).toHaveBeenCalledWith('apiKey', { required: true })
-    expect(getInputMock).toHaveBeenCalledWith('aggregateFunction')
-    expect(getInputMock).toHaveBeenCalledWith('apiUrl')
+    // Ensure all expected getInput calls were made, regardless of order
+    const expectedCalls = [
+      ['github_token'],
+      ['step_key', { required: true }],
+      ['runId'],
+      ['project'],
+      ['apiKey'],
+      ['runtime'],
+      ['aggregateFunction'],
+      ['openaiApiKey'],
+      ['apiUrl'],
+      ['root'],
+      ['github_token'],
+      ['step_key', { required: true }]
+    ]
+
+    const actualCalls = getInputMock.mock.calls
+    expect(actualCalls).toEqual(expect.arrayContaining(expectedCalls))
+    expect(actualCalls.length).toBe(expectedCalls.length)
+
+    // log actual calls of mockGet
+    console.log(mockGet.mock.calls)
 
     // Ensure the HTTP request was made with the correct URL and headers
     expect(mockGet).toHaveBeenCalledWith(
-      'https://api.example.com/runs/mockRunId/result?projectId=mockProjectId&aggregateFunction=average',
+      'https://api.example.com/runs/mockRunId/result?project=mockProject&aggregateFunction=average',
       {
         Authorization: 'Bearer mockApiKey',
         'Content-Type': 'application/json'

@@ -1,8 +1,22 @@
 import * as core from '@actions/core'
 import * as httpClient from '@actions/http-client'
 import { upsertComment } from './comment'
+import { runEval } from './honeyhive'
+import { z } from 'zod'
 
 const TITLE = '## HoneyHive Evaluation Report\n'
+
+const paramsSchema = z.strictObject({
+  apiKey: z.string(),
+  root: z.string(),
+  runId: z.string(),
+  project: z.string(),
+  runtime: z.enum(['node', 'python']),
+  aggregateFunction: z.string(),
+  openaiApiKey: z.string(),
+  apiUrl: z.string()
+})
+export type Params = z.infer<typeof paramsSchema>
 
 /**
  * Formats the evaluation outputs into a readable string
@@ -17,7 +31,7 @@ function formatOutputs(outputs: {
   metrics?: Record<string, any>
   datapoints?: Record<string, any>
 }): string {
-  const sections: string[] = [TITLE]
+  const sections: string[] = []
 
   if (outputs.status) {
     sections.push(`**Status:** ${outputs.status}`)
@@ -66,31 +80,46 @@ function formatOutputs(outputs: {
  */
 export async function run(): Promise<void> {
   try {
-    const runId: string = core.getInput('runId', { required: true })
-    const projectId: string = core.getInput('projectId', { required: true })
-    const aggregateFunction: string =
-      core.getInput('aggregateFunction') || 'average'
-    const apiUrl: string = core.getInput('apiUrl') || 'https://api.honeyhive.ai'
-    const apiKey = core.getInput('apiKey', { required: true })
-
     await upsertComment(`${TITLE}Evals in progress... ⌛`)
 
+    const parsed = paramsSchema.safeParse({
+      runId: core.getInput('runId'),
+      project: core.getInput('project'),
+      apiKey: core.getInput('apiKey'),
+      runtime: core.getInput('runtime'),
+      aggregateFunction: core.getInput('aggregateFunction'),
+      openaiApiKey: core.getInput('openaiApiKey'),
+      apiUrl: core.getInput('apiUrl'),
+      root: core.getInput('root')
+    })
+
+    if (!parsed.success) {
+      throw new Error(`Invalid parameters: ${parsed.error.message}`)
+    }
+
+    const args = parsed.data
+    console.log(JSON.stringify(args, null, 2))
+
+    await runEval(args)
+    // console.log(JSON.stringify(args, null, 2))
+
     // Construct the API URL for the request
-    const url = `${apiUrl}/runs/${runId}/result`
+    const url = `${args.apiUrl}/runs/${args.runId}/result`
+    console.log(url)
 
     // Create an instance of the HTTP client
     const client = new httpClient.HttpClient()
 
     // Set up request headers, including the Bearer token
     const headers = {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${args.apiKey}`,
       'Content-Type': 'application/json'
     }
 
     // Payload with query parameters
     const queryParams = {
-      projectId,
-      aggregateFunction
+      project: args.project,
+      aggregateFunction: args.aggregateFunction
     }
 
     // Convert queryParams to a URL query string
@@ -118,9 +147,9 @@ export async function run(): Promise<void> {
     core.setOutput('metrics', result.metrics)
     core.setOutput('datapoints', result.datapoints)
 
-    await upsertComment(
-      `${TITLE}Evaluation complete! 🎉\n${formatOutputs(result)}`
-    )
+    // await upsertComment(
+    //   `${TITLE}Evaluation complete! 🎉\n${formatOutputs(result)}`
+    // )
 
     // Log for debugging purposes
     core.info(`Status: ${result.status}`)

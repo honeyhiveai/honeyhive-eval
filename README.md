@@ -15,7 +15,7 @@ This action connects to the HoneyHive API, retrieves evaluation data, and sets o
 ## Inputs
 
 - **runId**: The ID of the evaluation run (required).
-- **projectId**: The ID of the project associated with the evaluation (required).
+- **project**: The project associated with the evaluation (required).
 - **apiKey**: The API key for the HoneyHive API (required).
 - **aggregateFunction**: The aggregation function to be used (default: `"average"`).
 - **apiUrl**: The base URL of the HoneyHive API (default: `"https://api.honeyhive.ai"`).
@@ -79,7 +79,7 @@ steps:
     uses: honeyhiveai/honeyhive-eval@main
     with:
       runId: 'your-run-id'
-      projectId: 'your-project-id'
+      project: 'your-project'
       aggregateFunction: 'average'
       apiUrl: 'https://api.honeyhive.ai'
       apiKey: ${{ secrets.HH_API_KEY }}
