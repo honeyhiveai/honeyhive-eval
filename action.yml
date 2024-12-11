@@ -25,6 +25,16 @@ inputs:
   apiKey:
     description: 'The API key for the Honeyhive API'
     required: true
+  github_token:
+    description: 'Your GitHub token'
+    required: true
+    default: ${{ github.token }}
+  step_key:
+    description:
+      "A unique key to identify this step. Do not change this unless you know
+      what you're doing."
+    required: true
+    default: ${{ github.workflow_ref }}-${{ github.action }}
 
 outputs:
   status:

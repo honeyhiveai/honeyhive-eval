@@ -1,5 +1,64 @@
 import * as core from '@actions/core'
 import * as httpClient from '@actions/http-client'
+import { upsertComment } from './comment'
+
+const TITLE = '## HoneyHive Evaluation Report\n'
+
+/**
+ * Formats the evaluation outputs into a readable string
+ * @param outputs Object containing the evaluation outputs
+ * @returns Formatted string representation of the outputs
+ */
+function formatOutputs(outputs: {
+  status?: string
+  success?: boolean
+  passed?: string[]
+  failed?: string[]
+  metrics?: Record<string, any>
+  datapoints?: Record<string, any>
+}): string {
+  const sections: string[] = [TITLE]
+
+  if (outputs.status) {
+    sections.push(`**Status:** ${outputs.status}`)
+  }
+
+  if (outputs.success !== undefined) {
+    sections.push(`**Overall Success:** ${outputs.success}`)
+  }
+
+  if (outputs.passed?.length) {
+    sections.push(
+      '**Passed Datapoints:**\n' +
+        outputs.passed.map(id => `- ${id}`).join('\n')
+    )
+  }
+
+  if (outputs.failed?.length) {
+    sections.push(
+      '**Failed Datapoints:**\n' +
+        outputs.failed.map(id => `- ${id}`).join('\n')
+    )
+  }
+
+  if (outputs.metrics) {
+    sections.push(
+      '**Metrics:**\n```json\n' +
+        JSON.stringify(outputs.metrics, null, 2) +
+        '\n```'
+    )
+  }
+
+  if (outputs.datapoints) {
+    sections.push(
+      '**Detailed Results:**\n```json\n' +
+        JSON.stringify(outputs.datapoints, null, 2) +
+        '\n```'
+    )
+  }
+
+  return sections.join('\n\n')
+}
 
 /**
  * The main function for the action.
@@ -13,6 +72,8 @@ export async function run(): Promise<void> {
       core.getInput('aggregateFunction') || 'average'
     const apiUrl: string = core.getInput('apiUrl') || 'https://api.honeyhive.ai'
     const apiKey = core.getInput('apiKey', { required: true })
+
+    await upsertComment(`${TITLE}Evals in progress... ⌛`)
 
     // Construct the API URL for the request
     const url = `${apiUrl}/runs/${runId}/result`
@@ -57,6 +118,10 @@ export async function run(): Promise<void> {
     core.setOutput('metrics', result.metrics)
     core.setOutput('datapoints', result.datapoints)
 
+    await upsertComment(
+      `${TITLE}Evaluation complete! 🎉\n${formatOutputs(result)}`
+    )
+
     // Log for debugging purposes
     core.info(`Status: ${result.status}`)
     core.info(`Success: ${result.success}`)
@@ -66,6 +131,9 @@ export async function run(): Promise<void> {
     core.info(`Datapoints: ${JSON.stringify(result.datapoints, null, 2)}`)
   } catch (error) {
     // Fail the workflow run if an error occurs
-    if (error instanceof Error) core.setFailed(error.message)
+    if (error instanceof Error) {
+      core.setFailed(error.message)
+      await upsertComment(`${TITLE} Error Encountered: ${error.message}`)
+    }
   }
 }

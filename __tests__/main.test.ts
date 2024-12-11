@@ -7,6 +7,7 @@ import { run } from '../src/main'
 
 // Mocking the @actions/core module
 jest.mock('@actions/core')
+jest.mock('@actions/github')
 
 const mockGet = jest.fn()
 
@@ -14,6 +15,38 @@ jest.mock('@actions/http-client', () => {
   return {
     HttpClient: jest.fn().mockImplementation(() => {
       return { get: mockGet }
+    })
+  }
+})
+jest.mock('@actions/github', () => {
+  return {
+    context: {
+      repo: {
+        owner: 'test-owner',
+        repo: 'test-repo'
+      },
+      issue: {
+        number: 1
+      },
+      sha: 'test-sha'
+    },
+    getOctokit: jest.fn().mockImplementation(() => {
+      return {
+        rest: {
+          issues: {
+            createComment: jest.fn(),
+            updateComment: jest.fn(),
+            listComments: jest.fn().mockResolvedValue({
+              data: []
+            })
+          },
+          repos: {
+            listPullRequestsAssociatedWithCommit: jest.fn().mockResolvedValue({
+              data: []
+            })
+          }
+        }
+      }
     })
   }
 })
