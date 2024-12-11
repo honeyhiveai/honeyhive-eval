@@ -7,11 +7,18 @@ branding:
   color: 'yellow'
 
 inputs:
+  root:
+    description: 'The root directory of the evaluation'
+    required: false
+    default: '.'
+  runtime:
+    description: 'The runtime to use for the evaluation'
+    required: true
   runId:
     description: 'The ID of the run to evaluate'
     required: true
-  projectId:
-    description: 'The project ID associated with the evaluation'
+  project:
+    description: 'The project associated with the evaluation'
     required: true
   aggregateFunction:
     description:
@@ -21,9 +28,13 @@ inputs:
     default: 'average'
   apiUrl:
     description: 'The base URL of the Honeyhive API'
-    required: true
+    required: false
+    default: 'https://api.honeyhive.ai'
   apiKey:
     description: 'The API key for the Honeyhive API'
+    required: true
+  openaiApiKey:
+    description: 'The API key for the OpenAI API'
     required: true
   github_token:
     description: 'Your GitHub token'
